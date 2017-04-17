@@ -1,0 +1,276 @@
+<html><head></head><body><div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a href="https://github.com/mafintosh/sqs">sqs (v2.0.2)</a>
+</h1>
+<h4>A message queue using Amazon Simple Queue Service.</h4>
+<div class="apidocSectionDiv"><a href="#apidoc.tableOfContents" id="apidoc.tableOfContents"><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.sqs">module sqs</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.sqs.sqs">
+            function <span class="apidocSignatureSpan"></span>sqs
+            <span class="apidocSignatureSpan">(options)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.sqs.toString">
+            function <span class="apidocSignatureSpan">sqs.</span>toString
+            <span class="apidocSignatureSpan">()</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.sqs.toString">module sqs.toString</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.sqs.toString.toString">
+            function <span class="apidocSignatureSpan">sqs.</span>toString
+            <span class="apidocSignatureSpan">()</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.sqs" id="apidoc.module.sqs">module sqs</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.sqs.sqs" id="apidoc.element.sqs.sqs">
+        function <span class="apidocSignatureSpan"></span>sqs
+        <span class="apidocSignatureSpan">(options)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">sqs = function (options) {
+	options = options || {};
+
+	options.access = options.access || process.env.SQS_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID;
+	options.secret = options.secret || process.env.SQS_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+	options.region = options.region || process.env.SQS_REGION || process.env.AWS_REGION || DEFAULT_REGION;
+	options.raw = options.raw || false;
+	options.proxy = options.proxy || false;
+
+	if (!options.access || !options.secret) throw new Error('options.access and options.secret are required');
+
+	var queues = {};
+	var closed = false;
+	var proto = options.https ? 'https://' : 'http://';
+
+	var host = 'sqs.'+options.region+'.amazonaws.com';
+	if (options.proxy) host = options.proxy;
+
+	var namespace = options.namespace ? options.namespace+'-' : '';
+
+	namespace = namespace.replace(/[^a-zA-Z0-9]/g, '-').replace(/\-+/g, '-');
+
+	var queryURL = function(action, path, params) {
+		params = params || {};
+
+		params.Action = action;
+		params.AWSAccessKeyId = options.access;
+		params.SignatureMethod = SIGNATURE_METHOD;
+		params.SignatureVersion = SIGNATURE_VERSION;
+		params.Expires = new Date(Date.now()+SIGNATURE_TTL).toISOString();
+		params.Version = VERSION;
+
+		var stringToSign = 'GET\n'+host+'\n'+path+'\n'+Object.keys(params).sort().map(function(name) {
+			return name+'='+encodeURIComponent(params[name]).replace(/[!'()]/g, escape).replace(/\*/g, '%2A');
+		}).join('&amp;');
+
+		params.Signature = crypto.createHmac('sha256',options.secret).update(stringToSign).digest('base64');
+
+		return proto+host+path+'?'+qs.stringify(params);
+	};
+
+	var retry = function(req, url, callback) {
+		var retries = 0;
+		var action = function() {
+			req(url, {timeout:10000}, function(err, res) {
+				if (!err &amp;&amp; res.statusCode &gt;= 500) err = new Error('invalid status-code: '+res.statusCode);
+				if (callback) return callback(err);
+				if (!err) return;
+				retries++;
+				if (retries &gt; 15) return that.emit('error', new Error('could not send '+url));
+				setTimeout(action, retries*1000);
+			});
+		};
+
+		action();
+	};
+
+	var queueURL = function(name, callback) {
+		if (queues[name]) return queues[name](callback);
+
+		var stack = [callback];
+
+		queues[name] = function(callback) {
+			stack.push(callback);
+		};
+
+		var onresult = function(err, url) {
+			if (err) return that.emit('error', err);
+
+			queues[name] = function(callback) {
+				callback(url);
+			};
+
+			while (stack.length) {
+				stack.shift()(url);
+			}
+		};
+
+		request(queryURL('CreateQueue', '/', {QueueName:name}), function(err) {
+			if (err) return onresult(err);
+			request(queryURL('GetQueueUrl', '/', {QueueName:name}), function(err, res) {
+				if (err || res.statusCode !== 200) {
+					var errMessage = res.body ? text(res.body, 'Message') : '';
+					return onresult(err || new Error('invalid status code from GetQueueUrl: '+res.statusCode +
+							(errMessage? '. '+errMessage : '') ));
+				}
+				onresult(null, '/'+text(res.body, 'QueueUrl').split('/').slice(3).join('/'));
+			});
+		});
+	};
+
+	var that = new events.EventEmitter();
+
+	that.push = function(name, message, callback) {
+		name = namespace+name;
+
+		queueURL(name, function(url) {
+			var body = options.raw ? message : JSON.stringify(message);
+			retry(request, queryURL('SendMessage', url, {MessageBody: body}), callback);
+		});
+	};
+
+	that.delete = that.del = function(name, callback) {
+		name = namespace+name;
+
+		queueURL(name, function(url) {
+			retry(request, queryURL('DeleteQueue', url), callback);
+		});
+	};
+
+	var wait = options.wait || 2000;
+
+	that.pull = function(name, workers, onmessage) {
+		if (typeof workers === 'function') return that.pull(name, options.workers || 1, workers);
+
+		name = namespace+name;
+
+		var agent =  options.https ? new https.Agent({maxSockets:workers}) : new http.Agent({maxSockets:workers}); // long poll should
+ use its own agent
+		var req = request.defaults({agent:agent});
+
+		range(workers).forEach(function() {
+			var next = function() {
+				if (closed) return;
+
+				queueURL(name, function(url) {
+					req(queryURL('ReceiveMessage', url, {WaitTimeSeconds:20}), function(err, res) {
+						if (err || res ...</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.sqs.toString" id="apidoc.element.sqs.toString">
+        function <span class="apidocSignatureSpan">sqs.</span>toString
+        <span class="apidocSignatureSpan">()</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">toString = function () {
+    return text;
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.sqs.toString" id="apidoc.module.sqs.toString">module sqs.toString</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.sqs.toString.toString" id="apidoc.element.sqs.toString.toString">
+        function <span class="apidocSignatureSpan">sqs.</span>toString
+        <span class="apidocSignatureSpan">()</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function toString() { [native code] }</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
+</body></html>
