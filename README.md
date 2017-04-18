@@ -1,5 +1,8 @@
-# api documentation for  [sqs (v2.0.2)](https://github.com/mafintosh/sqs)  [![npm package](https://img.shields.io/npm/v/npmdoc-sqs.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-sqs) [![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-sqs.svg)](https://travis-ci.org/npmdoc/node-npmdoc-sqs)
-#### A message queue using Amazon Simple Queue Service.
+# npmdoc-sqs
+
+api documentation for  [sqs (v2.0.2)](https://github.com/mafintosh/sqs)  [![npm package](https://img.shields.io/npm/v/npmdoc-sqs.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-sqs) [![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-sqs.svg)](https://travis-ci.org/npmdoc/node-npmdoc-sqs)
+
+A message queue using Amazon Simple Queue Service.
 
 [![NPM](https://nodei.co/npm/sqs.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/sqs)
 
