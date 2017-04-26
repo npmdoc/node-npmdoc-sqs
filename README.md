@@ -1,8 +1,8 @@
 # npmdoc-sqs
 
-api documentation for  [sqs (v2.0.2)](https://github.com/mafintosh/sqs)  [![npm package](https://img.shields.io/npm/v/npmdoc-sqs.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-sqs) [![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-sqs.svg)](https://travis-ci.org/npmdoc/node-npmdoc-sqs)
+#### basic api documentation for  [sqs (v2.0.2)](https://github.com/mafintosh/sqs)  [![npm package](https://img.shields.io/npm/v/npmdoc-sqs.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-sqs) [![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-sqs.svg)](https://travis-ci.org/npmdoc/node-npmdoc-sqs)
 
-A message queue using Amazon Simple Queue Service.
+#### A message queue using Amazon Simple Queue Service.
 
 [![NPM](https://nodei.co/npm/sqs.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/sqs)
 
@@ -58,7 +58,8 @@ A message queue using Amazon Simple Queue Service.
         "url": "git://github.com/mafintosh/sqs.git"
     },
     "scripts": {},
-    "version": "2.0.2"
+    "version": "2.0.2",
+    "bin": {}
 }
 ```
 
